@@ -5,8 +5,8 @@ import strformat
 type
   I2cdev* = ref object
     fd: File
-    address: int
-    opened: bool
+    address: uint8
+    opened*: bool
   I2c_msg {.importc: "struct i2c_msg", header: "<linux/i2c.h>".} = object
     `addr`: cushort  # slave address
     flags: cushort
@@ -33,7 +33,7 @@ const
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc i2c_open*(bus: int, address: int): I2cdev =
+proc i2c_open*(bus: int, address: uint8): I2cdev =
   let devname = fmt"/dev/i2c-{bus}"
   let fd = open(devname, fmReadWrite)
   result = new I2cdev
@@ -66,6 +66,27 @@ proc write_read*(i2c: I2cdev, writebuf: openArray[char|uint8], readlen: int): se
   if res < 0:
     return @[]
   result = msgs[1].buf.toSeq
+
+# -------------------------------------------------------------------
+#
+# -------------------------------------------------------------------
+proc write*(i2c: I2cdev, writebuf: openArray[char|uint8]): bool =
+  var packets: I2c_rdwr_ioctl_data
+  var msgs: array[1, I2c_msg]
+
+  # Setting up the register write
+  msgs[0].`addr` = i2c.address.uint16
+  msgs[0].flags = 0
+  msgs[0].len = writebuf.len.uint16
+  msgs[0].buf = cast[cstring](unsafeAddr writebuf)
+  packets.msgs = addr msgs[0]
+  packets.nmsgs = 1
+
+  let res = posix.ioctl(i2c.fd.getFileHandle, I2C_RDWR, addr packets)
+  if res == 0:
+    result = true
+  else:
+    result = false
 
 
 when isMainModule:
