@@ -47,7 +47,7 @@ proc i2c_open*(bus: int, address: uint8): I2cdev =
 proc write_read*(i2c: I2cdev, writebuf: openArray[char|uint8], readlen: int): seq[char] =
   var packets: I2c_rdwr_ioctl_data
   var msgs: array[2, I2c_msg]
-  var buf = newSeqOfCap[char](readlen)
+  var buf: array[256, char]
 
   # Setting up the register write
   msgs[0].`addr` = i2c.address.uint16
@@ -65,7 +65,9 @@ proc write_read*(i2c: I2cdev, writebuf: openArray[char|uint8], readlen: int): se
   let res = posix.ioctl(i2c.fd.getFileHandle, I2C_RDWR, addr packets)
   if res < 0:
     return @[]
-  result = msgs[1].buf.toSeq
+  result = newSeq[char](readlen)
+  for idx in 0..<readlen:
+    result[idx] = buf[idx]
 
 # -------------------------------------------------------------------
 #
@@ -96,15 +98,16 @@ when isMainModule:
   var i2c = i2c_open(1, 0x32)
   var wbuf: seq[uint8] = @[0'u8]
 
-  var buf = i2c.write_read(wbuf, 7)
+  var buf = i2c.write_read(wbuf, 0x0d + 1)
   echo fmt"buf lenght: {buf.len}"
   if buf.len > 0:
-    for idx, c in buf.mpairs:
-      echo fmt"[{idx}]: {c.uint8:#02X}"
-    let year = bcd2bin(buf[6]) + 2000
-    let month = bcd2bin(buf[5])
-    let day = bcd2bin(buf[4])
-    let hour = bcd2bin(buf[2])
-    let minute = bcd2bin(buf[1])
-    let second = bcd2bin(buf[0])
-    echo fmt"{year}/{month:02d}/{day:02d} {hour:02d}:{minute:02d}:{second:02d} [UTC]"
+    try:
+      let year = bcd2bin(buf[6]) + 2000
+      let month = bcd2bin(buf[5])
+      let day = bcd2bin(buf[4])
+      let hour = bcd2bin(buf[2])
+      let minute = bcd2bin(buf[1])
+      let second = bcd2bin(buf[0])
+      echo fmt"{year}/{month:02d}/{day:02d} {hour:02d}:{minute:02d}:{second:02d} [UTC]"
+    except:
+      echo "length error"
