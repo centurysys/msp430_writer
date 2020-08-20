@@ -189,6 +189,9 @@ proc main(): int =
   app.load_firmware(app.options.firmware)
   app.invoke_bsl()
 
+  discard app.mass_erase()
+  os.sleep(500)
+
   var unlock_ok = false
   for i in 0..2:
     if app.unlock_device():
@@ -201,8 +204,7 @@ proc main(): int =
   if not unlock_ok:
     quit("Device unlock failed.", 1)
 
-  #discard app.mass_erase()
-  os.sleep(2500)
+  os.sleep(500)
 
   if not app.write_firmware():
     quit("write firmware failed.")
