@@ -1,11 +1,14 @@
+# =============================================================================
+# I2C Access Library
+# =============================================================================
 import posix
-import sequtils
 import strformat
 
 type
   I2cdev* = ref object
     fd: File
     address: uint8
+    debug: bool
     opened*: bool
   I2c_msg {.importc: "struct i2c_msg", header: "<linux/i2c.h>".} = object
     `addr`: cushort  # slave address
@@ -33,62 +36,89 @@ const
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc i2c_open*(bus: int, address: uint8): I2cdev =
+proc i2c_open*(bus: int, address: uint8, debug: bool = false): I2cdev =
   let devname = fmt"/dev/i2c-{bus}"
   let fd = open(devname, fmReadWrite)
   result = new I2cdev
   result.fd = fd
   result.address = address
   result.opened = true
+  result.debug = debug
 
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc write_read*(i2c: I2cdev, writebuf: openArray[char|uint8], readlen: int): seq[char] =
+proc write_read*(self: I2cdev, writebuf: openArray[char|uint8], readlen: int): seq[char] =
   var packets: I2c_rdwr_ioctl_data
   var msgs: array[2, I2c_msg]
-  var buf: array[256, char]
+  var wr_buf: array[256, char]
+  var rd_buf: array[256, char]
 
   # Setting up the register write
-  msgs[0].`addr` = i2c.address.uint16
+  msgs[0].`addr` = self.address.uint16
   msgs[0].flags = 0
   msgs[0].len = writebuf.len.uint16
-  msgs[0].buf = cast[cstring](unsafeAddr writebuf)
+  msgs[0].buf = cast[cstring](addr wr_buf)
   # Setting up the read
-  msgs[1].`addr` = i2c.address.uint16
+  msgs[1].`addr` = self.address.uint16
   msgs[1].flags = I2c_M_RD
   msgs[1].len = readlen.uint16
-  msgs[1].buf = cast[cstring](addr buf)
+  msgs[1].buf = cast[cstring](addr rd_buf)
   packets.msgs = addr msgs[0]
   packets.nmsgs = 2
 
-  let res = posix.ioctl(i2c.fd.getFileHandle, I2C_RDWR, addr packets)
+  let res = posix.ioctl(self.fd.getFileHandle, I2C_RDWR, addr packets)
   if res < 0:
     return @[]
   result = newSeq[char](readlen)
-  for idx in 0..<readlen:
-    result[idx] = buf[idx]
 
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc write*(i2c: I2cdev, writebuf: openArray[char|uint8]): bool =
+proc write*(self: I2cdev, writebuf: openArray[char|uint8]): bool =
   var packets: I2c_rdwr_ioctl_data
   var msgs: array[1, I2c_msg]
+  var wr_buf: array[256, char]
+
+  for i in 0..<writebuf.len:
+    wr_buf[i] = writebuf[i].char
 
   # Setting up the register write
-  msgs[0].`addr` = i2c.address.uint16
+  msgs[0].`addr` = self.address.uint16
   msgs[0].flags = 0
   msgs[0].len = writebuf.len.uint16
-  msgs[0].buf = cast[cstring](unsafeAddr writebuf)
+  msgs[0].buf = cast[cstring](addr wr_buf)
   packets.msgs = addr msgs[0]
   packets.nmsgs = 1
 
-  let res = posix.ioctl(i2c.fd.getFileHandle, I2C_RDWR, addr packets)
-  if res == 0:
-    result = true
-  else:
+  let res = posix.ioctl(self.fd.getFileHandle, I2C_RDWR, addr packets)
+  if res < 0:
     result = false
+  else:
+    result = true
+
+# -------------------------------------------------------------------
+#
+# -------------------------------------------------------------------
+proc read*(self: I2cdev, readlen: int): seq[char] =
+  var packets: I2c_rdwr_ioctl_data
+  var msgs: array[1, I2c_msg]
+  var rd_buf: array[256, char]
+
+  # Setting up the register write
+  msgs[0].`addr` = self.address.uint16
+  msgs[0].flags = I2C_M_RD
+  msgs[0].len = readlen.uint16
+  msgs[0].buf = cast[cstring](addr rd_buf)
+  packets.msgs = addr msgs[0]
+  packets.nmsgs = 1
+
+  let res = posix.ioctl(self.fd.getFileHandle, I2C_RDWR, addr packets)
+  if res < 0:
+    result = @[]
+  else:
+    for i in 0..<readlen:
+      result.add(rd_buf[i])
 
 
 when isMainModule:
@@ -96,6 +126,8 @@ when isMainModule:
     result = (((bcd.uint8 and 0xf0) shr 4) * 10 + (bcd.uint8 and 0x0f)).int
 
   var i2c = i2c_open(1, 0x32)
+  if i2c.isNil:
+    quit("open i2c failed")
   var wbuf: seq[uint8] = @[0'u8]
 
   var buf = i2c.write_read(wbuf, 0x0d + 1)
