@@ -8,6 +8,7 @@ import options
 import os
 import strformat
 import argparse
+import lib/crc
 import lib/gpio
 import lib/protocol
 import lib/firmware_parser
@@ -121,12 +122,28 @@ proc write_firmware(self: App): bool =
 #
 # ---------------------------------------------------------
 proc verify_segment(self: App, segment: MemSegment): bool =
-  let address = segment.startAddress
+  let address = segment.startAddress.uint32
   let segment_len = segment.buffer.len
-  let crc_val = self.msp430.check_crc(address, segment_len.uint16)
-  if not crc_val.isSome:
+  let chunksize = 16'u16
+  var buf = newSeqOfCap[char](segment_len)
+  var pos = 0'u32
+  var remain = segment_len.uint16
+
+  while remain > 0:
+    let readlen = if remain > chunksize: chunksize else: remain
+    let chunk = self.msp430.read_data(address + pos, readlen.int16)
+    if chunk.len == 0:
+      echo "! verify_segment: read failed."
+      return false
+    buf.add(chunk)
+    pos += readlen
+    remain -= readlen
+  let crc_buf = calc_CRC_CCITT(buf)
+  if crc_buf == segment.crc:
+    result = true
+  else:
+    echo "! verify_segment: crc mismatch"
     return false
-  result = (crc_val.get == segment.crc)
 
 # ---------------------------------------------------------
 #
@@ -136,7 +153,7 @@ proc verify_firmware(self: App): bool =
     var verify_ok = false
 
     for retry in 0..<3:
-      stdout.write(fmt"* CRC Check segment No. {idx + 1} ...")
+      stdout.write(fmt"* Verify segment No. {idx + 1} ...")
       if self.verify_segment(segment):
         echo "OK."
         verify_ok = true
@@ -170,25 +187,28 @@ proc main(): int =
     quit("open I2C driver failed.", 1)
 
   app.load_firmware(app.options.firmware)
+  app.invoke_bsl()
 
   var unlock_ok = false
   for i in 0..2:
-    app.invoke_bsl()
     if app.unlock_device():
       unlock_ok = true
       break
+    echo "! password not match, mass-erase."
     if i < 2:
-      os.sleep(1)
+      os.sleep(100)
 
   if not unlock_ok:
     quit("Device unlock failed.", 1)
 
-  discard app.mass_erase()
-  os.sleep(1)
+  #discard app.mass_erase()
+  os.sleep(2500)
 
   if not app.write_firmware():
     quit("write firmware failed.")
-  os.sleep(1)
+
+  os.sleep(1000)
+
   if not app.verify_firmware():
     quit("verify(CRC check) failed.")
 

@@ -182,15 +182,20 @@ proc send_data*(self: Msp430, address: uint32, buf: openArray[char]): bool =
 # Command:0x11 : RX Password (4.1.5.2)
 # ---------------------------------------------------------
 proc unlock_device*(self: Msp430, password: array[32, char]): bool =
+  result = false
   var packet: BslPacket
   packet.command = CMD_SEND_PASSWORD
   packet.address = SKIP_ADDRESS
   packet.data = @password
   let res = self.send_recv_i2c_packet(packet, 1)
   if res.len == 0:
-    return false
+    return result
   let pkt_state = check_response(res)
-  return pkt_state.res
+  if pkt_state.res:
+    # check result
+    let msg = res[5]
+    if msg == 0.char:
+      result = true
 
 # ---------------------------------------------------------
 # Command:0x15 : Mass Erase (4.1.5.3)
