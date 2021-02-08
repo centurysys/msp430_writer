@@ -1,10 +1,9 @@
 # =============================================================================
 # MSP430 In-System-Programmer
 #
-# Copyright(c) 2020 Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
+# Copyright(c) 2020,2021 Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
 # =============================================================================
 import algorithm
-import options
 import os
 import strformat
 import argparse
@@ -101,7 +100,7 @@ proc write_segment(self: App, segment: MemSegment): bool =
     if self.msp430.send_data((address + pos.uint16).uint32, data):
       stderr.write(".")
       pos += num_write
-      os.sleep(10)
+      os.sleep(2)
     else:
       echo fmt"\nwrite_segment failed at pos: {pos}"
       return false

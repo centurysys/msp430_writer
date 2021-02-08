@@ -105,7 +105,7 @@ proc check_response(payload: openArray[char]): PktResponse =
 #
 # ---------------------------------------------------------
 proc send_recv_i2c_packet(self: Msp430, packet: BslPacket, readlen: int,
-                          interval: int = 100): seq[char] =
+                          interval: int = 2): seq[char] =
   var xbuf = newSeqOfCap[char](packet.data.len + 8)
   xbuf.add(HEADER)
   var datalen = packet.data.len + 1
