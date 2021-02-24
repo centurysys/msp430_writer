@@ -97,12 +97,20 @@ proc write_segment(self: App, segment: MemSegment): bool =
     let bytes_remain = segment.buffer.len - pos
     let num_write = if bytes_remain > wr_unit: wr_unit else: bytes_remain
     let data = segment.buffer[pos..<(pos + num_write)]
-    if self.msp430.send_data((address + pos.uint16).uint32, data):
-      stderr.write(".")
-      pos += num_write
-      os.sleep(2)
-    else:
-      echo fmt"\nwrite_segment failed at pos: {pos}"
+
+    var write_ok = false
+    for retry in 0..<3:
+      if self.msp430.send_data((address + pos.uint16).uint32, data):
+        stderr.write(".")
+        pos += num_write
+        os.sleep(2)
+        write_ok = true
+        break
+      else:
+        stderr.write("x")
+        os.sleep(100)
+    if not write_ok:
+      echo &"\nwrite_segment failed at pos: {pos}"
       return false
 
   stderr.write("\n")
@@ -206,12 +214,12 @@ proc main(): int =
   os.sleep(500)
 
   if not app.write_firmware():
-    quit("write firmware failed.")
+    quit("write firmware failed.", 1)
 
   os.sleep(1000)
 
   if not app.verify_firmware():
-    quit("verify(CRC check) failed.")
+    quit("verify(CRC check) failed.", 1)
 
   app.run_firmware()
   quit(0)
