@@ -113,16 +113,18 @@ proc write_segment(self: App, segment: MemSegment): bool =
       echo &"\nwrite_segment failed at pos: {pos}"
       return false
 
-  stderr.write("\n")
   return true
 
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
 proc write_firmware(self: App): bool =
-  for segment in self.firmware.segments:
+  for idx, segment in self.firmware.segments.pairs:
+    stderr.write(&"* Writing segment No. {idx + 1}")
     if not self.write_segment(segment):
+      echo "Writing Firmware Failed."
       return false
+    stderr.write(" OK.\n")
   return true
 
 # ---------------------------------------------------------
@@ -156,7 +158,7 @@ proc verify_segment(self: App, segment: MemSegment): bool =
 #
 # ---------------------------------------------------------
 proc verify_firmware(self: App): bool =
-  for idx, segment in self.firmware.segments.mpairs:
+  for idx, segment in self.firmware.segments.pairs:
     var verify_ok = false
 
     for retry in 0..<3:
