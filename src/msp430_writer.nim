@@ -165,6 +165,7 @@ proc verify_firmware(self: App): bool =
 
     for retry in 0..<3:
       stdout.write(fmt"* Verify segment No. {idx + 1} ...")
+      stdout.flushFile()
       if self.verify_segment(segment):
         echo "OK."
         verify_ok = true
