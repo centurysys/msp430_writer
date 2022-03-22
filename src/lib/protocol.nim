@@ -67,7 +67,7 @@ proc get_uint16(payload: openArray[char], pos: int): uint16 =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc msp430_open*(bus: int = 1, address: uint8 = 0x48, debug = false): Msp430 =
+proc newMsp430*(bus: int = 1, address: uint8 = 0x48, debug = false): Msp430 =
   var dev = i2c_open(bus, address, debug)
   if not dev.opened:
     return nil
@@ -281,12 +281,12 @@ when isMainModule:
   import algorithm
   import strformat
 
-  var msp430 = msp430_open(debug = true)
+  var msp430 = newMsp430(debug = true)
   var password: array[32, char]
   password.fill(0xff.char)
   let unlock_result = msp430.unlock_device(password)
   if not unlock_result:
-     quit("unlock failed.")
+    quit("unlock failed.")
   let res_version = msp430.get_version()
   if res_version.isSome:
     let version_info = res_version.get

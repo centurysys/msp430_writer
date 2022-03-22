@@ -12,9 +12,6 @@ type
     name: string
     basedir: string
     fd: File
-  GpioDir {.pure.} = enum
-    Reset = "MSP430_RST"
-    Test = "MSP430_TEST"
   Msp430Reset* = ref object
     test: Gpio
     reset: Gpio
@@ -30,17 +27,17 @@ proc set(fd: File, val: string) =
 # -------------------------------------------------------------------
 # GPIO (LED)
 # -------------------------------------------------------------------
-proc gpio_open(gpio: GpioDir): Gpio =
-  let basedir = fmt"/sys/class/leds/{gpio}"
-  let nodetrigger = fmt"{basedir}/trigger"
+proc newGpio(gpio_name: string): Gpio =
+  let basedir = &"/sys/class/leds/{gpio_name}"
+  let nodetrigger = &"{basedir}/trigger"
   let fd_trigger = open(node_trigger, fmReadWrite)
   defer:
     fd_trigger.close()
   fd_trigger.set($Trigger.None)
-  let node_value = fmt"{basedir}/brightness"
+  let node_value = &"{basedir}/brightness"
   let fd = open(node_value, fmReadWrite)
   result = new Gpio
-  result.name = $gpio
+  result.name = gpio_name
   result.basedir = basedir
   result.fd = fd
 
@@ -60,10 +57,11 @@ proc wait(msec: int) =
 # -------------------------------------------------------------------
 # MSP430 Reset
 # -------------------------------------------------------------------
-proc msp430reset_init*(): Msp430Reset =
+proc newMsp430Reset*(pin_reset = "MSP430_RST", pin_test = "MSP430_TEST"):
+    Msp430Reset =
   result = new Msp430Reset
-  result.test = gpio_open(GpioDir.Test)
-  result.reset = gpio_open(GpioDir.Reset)
+  result.test = newGpio(pin_test)
+  result.reset = newGpio(pin_reset)
 
 # -------------------------------------------------------------------
 #
@@ -103,5 +101,5 @@ proc reset_mcu*(self: Msp430Reset) =
 
 
 when isMainModule:
-  let msp430 = msp430reset_init()
+  let msp430 = newMsp430Reset()
   msp430.invoke_bsl()
