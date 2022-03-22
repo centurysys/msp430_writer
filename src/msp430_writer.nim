@@ -120,10 +120,10 @@ proc write_segment(self: App, segment: MemSegment): bool =
 # ---------------------------------------------------------
 proc write_firmware(self: App): bool =
   for idx, segment in self.firmware.segments.pairs:
-    stdout.write(&"* Writing segment No. {idx + 1}")
+    stdout.write(&"* Writing segment No. {idx + 1} ")
     stdout.flushFile()
     if not self.write_segment(segment):
-      echo "Writing Firmware Failed."
+      echo " Writing Firmware Failed."
       return false
     stdout.write(" OK.\n")
     stdout.flushFile()
@@ -167,12 +167,12 @@ proc verify_firmware(self: App): bool =
       stdout.write(fmt"* Verify segment No. {idx + 1} ...")
       stdout.flushFile()
       if self.verify_segment(segment):
-        echo "OK."
+        echo " OK."
         verify_ok = true
         os.sleep(100)
         break
       else:
-        echo "Failed."
+        echo " Failed."
         os.sleep(500)
     if not verify_ok:
       return false
