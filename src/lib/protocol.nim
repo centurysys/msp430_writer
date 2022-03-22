@@ -1,10 +1,10 @@
 # =============================================================================
 # MSP430 BSL protocol
 # =============================================================================
-import options
-import os
-import crc
-import i2c
+import std/options
+import std/os
+import ./crc
+import ./i2c
 
 type
   Msp430* = ref object

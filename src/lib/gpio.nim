@@ -1,8 +1,8 @@
 # =============================================================================
 # GPIO(LED driver) access
 # =============================================================================
-import os
-import strformat
+import std/os
+import std/strformat
 
 type
   Trigger* {.pure.} = enum

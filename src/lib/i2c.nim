@@ -1,8 +1,8 @@
 # =============================================================================
 # I2C Access Library
 # =============================================================================
-import posix
-import strformat
+import std/posix
+import std/strformat
 
 type
   I2cdev* = ref object
