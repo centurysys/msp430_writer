@@ -1,9 +1,9 @@
 # =============================================================================
 # TI-TXT format firmware parser
 # =============================================================================
-import strutils
-import sequtils
-import crc
+import std/strutils
+import std/sequtils
+import ./crc
 
 type
   MemSegment* = ref object

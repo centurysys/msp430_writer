@@ -1,45 +1,58 @@
 # =============================================================================
 # MSP430 In-System-Programmer
 #
-# Copyright(c) 2020,2021 Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
+# Copyright(c) 2020-2022 Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
 # =============================================================================
-import algorithm
-import os
-import strformat
+import std/algorithm
+import std/os
+import std/strformat
 import argparse
+import lib/config_parser
 import lib/crc
 import lib/gpio
 import lib/protocol
 import lib/firmware_parser
 
 type
-  AppOptions = object
-    firmware*: string
-    busnumber*: int
-    address*: uint8
-  App = ref object
+  AppObj = object
     msp430: Msp430
     msp430reset: Msp430Reset
     firmware: Firmware
     options: AppOptions
+  App = ref AppObj
 
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
 proc parse_args(): AppOptions =
   var p = newParser("msp430_writer"):
+    argparse.option("-c", "--config",
+        help = "config file")
     argparse.option("-f", "--firmware",
-                    help = "Firmware filename(TI-TXT format)")
+        help = "Firmware filename(TI-TXT format)")
     argparse.option("-b", "--busnum", default = "1",
-                    help = "I2C bus number")
+        help = "I2C bus number")
     argparse.option("-a", "--address", default = "0x48",
-                    help = "MSP430 address")
+        help = "MSP430 address")
+    argparse.option("-t", "--pin_test", default = "MSP430_TEST",
+        help = "MSP430 control pin (TEST)")
+    argparse.option("-r", "--pin_reset", default = "MSP430_RST",
+        help = "MSP430 control pin (RESET)")
   var opts = p.parse()
-  result.firmware = opts.firmware
-  result.busnumber = opts.busnum.parseInt
-  result.address = opts.address.parseHexInt.uint8
   if opts.help:
     quit(1)
+  if opts.config.len > 0:
+    result = parse_config(opts.config)
+  if result.firmware.len == 0:
+    result.firmware = opts.firmware
+  if result.busnumber == 0:
+    result.busnumber = opts.busnum.parseInt
+  if result.address == 0:
+    result.address = opts.address.parseHexInt.uint8
+  if result.pin_test.len == 0 and opts.pin_test.len > 0:
+    result.pin_test = opts.pin_test
+  if result.pin_reset.len == 0 and opts.pin_reset.len > 0:
+    result.pin_reset = opts.pin_reset
 
 # ---------------------------------------------------------
 #
@@ -62,14 +75,14 @@ proc unlock_device(self: App): bool =
     echo "* Unlock device succeeded."
     result = true
   else:
-    echo "* Unlock device failed."
+    echo "! Unlock device failed."
     result = false
 
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
 proc mass_erase(self: App): bool =
-  stdout.write(fmt"* Mass-erase device...")
+  stdout.write("* Mass-erase device...")
   if self.msp430.mass_erase():
     echo "done."
     result = true
@@ -81,7 +94,7 @@ proc mass_erase(self: App): bool =
 #
 # ---------------------------------------------------------
 proc load_firmware(self: App, filename: string) =
-  stdout.write(fmt"* Load firmware from file: {filename} ...")
+  stdout.write(&"* Load firmware from file: {filename} ...")
   self.firmware = load_firmware(filename)
   echo "done."
 
@@ -164,7 +177,7 @@ proc verify_firmware(self: App): bool =
     var verify_ok = false
 
     for retry in 0..<3:
-      stdout.write(fmt"* Verify segment No. {idx + 1} ...")
+      stdout.write(&"* Verify segment No. {idx + 1} ...")
       stdout.flushFile()
       if self.verify_segment(segment):
         echo " OK."
@@ -193,8 +206,9 @@ proc main(): int =
   let options = parse_args()
   app.options = options
   echo "MSP430 firmware updater"
-  app.msp430reset = msp430reset_init()
-  app.msp430 = msp430_open(options.busnumber, options.address)
+  app.msp430reset = newMsp430Reset(pin_reset = options.pin_reset,
+      pin_test = options.pin_test)
+  app.msp430 = newMsp430(options.busnumber, options.address)
   if app.msp430.isNil:
     quit("open I2C driver failed.", 1)
 
