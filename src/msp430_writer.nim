@@ -206,7 +206,8 @@ proc main(): int =
   let options = parse_args()
   app.options = options
   echo "MSP430 firmware updater"
-  app.msp430reset = newMsp430Reset()
+  app.msp430reset = newMsp430Reset(pin_reset = options.pin_reset,
+      pin_test = options.pin_test)
   app.msp430 = newMsp430(options.busnumber, options.address)
   if app.msp430.isNil:
     quit("open I2C driver failed.", 1)
