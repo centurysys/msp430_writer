@@ -57,9 +57,11 @@ proc wait(msec: int) =
 # -------------------------------------------------------------------
 # MSP430 Reset
 # -------------------------------------------------------------------
-proc newMsp430Reset*(pin_reset = "MSP430_RST", pin_test = "MSP430_TEST"):
+proc newMsp430Reset*(chip: string = ""):
     Msp430Reset =
   result = new Msp430Reset
+  let pin_reset = if chip.len > 0: &"MSP430_{chip}_RST" else: "MSP430_RST"
+  let pin_test = if chip.len > 0: &"MSP430_{chip}_TEST" else: "MSP430_TEST"
   result.test = newGpio(pin_test)
   result.reset = newGpio(pin_reset)
 

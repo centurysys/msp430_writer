@@ -34,10 +34,8 @@ proc parse_args(): AppOptions =
         help = "I2C bus number")
     argparse.option("-a", "--address", default = "0x48",
         help = "MSP430 address")
-    argparse.option("-t", "--pin_test", default = "MSP430_TEST",
-        help = "MSP430 control pin (TEST)")
-    argparse.option("-r", "--pin_reset", default = "MSP430_RST",
-        help = "MSP430 control pin (RESET)")
+    argparse.option("-s", "--chip", default = "",
+        help = "MSP430 select chip")
   var opts = p.parse()
   if opts.help:
     quit(1)
@@ -49,10 +47,8 @@ proc parse_args(): AppOptions =
     result.busnumber = opts.busnum.parseInt
   if result.address == 0:
     result.address = opts.address.parseHexInt.uint8
-  if result.pin_test.len == 0 and opts.pin_test.len > 0:
-    result.pin_test = opts.pin_test
-  if result.pin_reset.len == 0 and opts.pin_reset.len > 0:
-    result.pin_reset = opts.pin_reset
+  if result.chip.len == 0 and opts.chip.len > 0:
+    result.chip = opts.chip
 
 # ---------------------------------------------------------
 #
@@ -206,8 +202,7 @@ proc main(): int =
   let options = parse_args()
   app.options = options
   echo "MSP430 firmware updater"
-  app.msp430reset = newMsp430Reset(pin_reset = options.pin_reset,
-      pin_test = options.pin_test)
+  app.msp430reset = newMsp430Reset(chip = options.chip)
   app.msp430 = newMsp430(options.busnumber, options.address)
   if app.msp430.isNil:
     quit("open I2C driver failed.", 1)

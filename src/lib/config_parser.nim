@@ -7,8 +7,7 @@ type
     firmware*: string
     busnumber*: int
     address*: uint8
-    pin_test*: string
-    pin_reset*: string
+    chip*: string
 
 # ---------------------------------------------------------
 #
@@ -28,9 +27,7 @@ proc parse_config*(path: string): AppOptions =
         result.busnumber = parts[1].parseInt
       of "ADDRESS":
         result.address = parts[1].parseHexInt.uint8
-      of "PIN_TEST":
-        result.pin_test = parts[1]
-      of "PIN_RESET":
-        result.pin_reset = parts[1]
+      of "CHIP":
+        result.chip = parts[1]
     except:
       discard
