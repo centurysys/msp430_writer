@@ -28,25 +28,23 @@ MSP430用ファームウェアをTI-TXT形式で出力し、MA-S1xx実機で下�
 
 ### Options
 
-    root@gemini:/tmp# ./msp430_writer -h
+    root@metis:~# msp430_writer -h
     msp430_writer
 
     Usage:
-    msp430_writer [options]
+      msp430_writer [options]
 
     Options:
-    -c, --config=CONFIG        config file
-    -f, --firmware=FIRMWARE    Firmware filename(TI-TXT format)
-    -b, --busnum=BUSNUM        I2C bus number (default: 1)
-    -a, --address=ADDRESS      MSP430 address (default: 0x48)
-    -t, --pin_test=PIN_TEST    MSP430 control pin (TEST) (default: MSP430_TEST)
-    -r, --pin_reset=PIN_RESET  MSP430 control pin (RESET) (default: MSP430_RST)
-    -h, --help                 Show this help
+      -c, --config=CONFIG        config file
+      -f, --firmware=FIRMWARE    Firmware filename(TI-TXT format)
+      -b, --busnum=BUSNUM        I2C bus number (default: 1)
+      -a, --address=ADDRESS      MSP430 address (default: 0x48)
+      -s, --chip=CHIP            MSP430 select chip
+      -h, --help                 Show this help
 
 ### Config file format
 
     Firmware =
     BusNumber = 1
     Address = 0x48
-    Pin_TEST = "MSP430_TEST"
-    Pin_RESET = "MSP430_RESET"
+    Chip = "EXT1"
