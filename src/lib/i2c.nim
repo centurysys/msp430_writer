@@ -5,11 +5,12 @@ import std/posix
 import std/strformat
 
 type
-  I2cdev* = ref object
+  I2cdevObj = object
     fd: File
     address: uint8
     debug: bool
     opened*: bool
+  I2cdev* = ref I2cdevObj
   I2c_msg {.importc: "struct i2c_msg", header: "<linux/i2c.h>".} = object
     `addr`: cushort  # slave address
     flags: cushort
@@ -37,7 +38,7 @@ const
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc i2c_open*(bus: int, address: uint8, debug: bool = false): I2cdev =
+proc newI2c*(bus: int, address: uint8, debug: bool = false): I2cdev =
   let devname = &"/dev/i2c-{bus}"
   let fd = open(devname, fmReadWrite)
   result = new I2cdev
@@ -52,26 +53,24 @@ proc i2c_open*(bus: int, address: uint8, debug: bool = false): I2cdev =
 proc write_read*(self: I2cdev, writebuf: openArray[char|uint8], readlen: int): seq[char] =
   var packets: I2c_rdwr_ioctl_data
   var msgs: array[2, I2c_msg]
-  var wr_buf: array[256, char]
-  var rd_buf: array[256, char]
+  result = newSeq[char](readlen)
 
   # Setting up the register write
   msgs[0].`addr` = self.address.uint16
   msgs[0].flags = 0
   msgs[0].len = writebuf.len.uint16
-  msgs[0].buf = cast[cstring](addr wr_buf)
+  msgs[0].buf = cast[cstring](unsafeAddr writebuf[0])
   # Setting up the read
   msgs[1].`addr` = self.address.uint16
   msgs[1].flags = I2c_M_RD
   msgs[1].len = readlen.uint16
-  msgs[1].buf = cast[cstring](addr rd_buf)
+  msgs[1].buf = cast[cstring](addr result[0])
   packets.msgs = addr msgs[0]
   packets.nmsgs = 2
 
   let res = posix.ioctl(self.fd.getFileHandle, I2C_RDWR, addr packets)
   if res < 0:
-    return @[]
-  result = newSeq[char](readlen)
+    result.setlen(0)
 
 # -------------------------------------------------------------------
 #
@@ -79,16 +78,12 @@ proc write_read*(self: I2cdev, writebuf: openArray[char|uint8], readlen: int): s
 proc write*(self: I2cdev, writebuf: openArray[char|uint8]): bool =
   var packets: I2c_rdwr_ioctl_data
   var msgs: array[1, I2c_msg]
-  var wr_buf: array[256, char]
-
-  for i in 0..<writebuf.len:
-    wr_buf[i] = writebuf[i].char
 
   # Setting up the register write
   msgs[0].`addr` = self.address.uint16
   msgs[0].flags = 0
   msgs[0].len = writebuf.len.uint16
-  msgs[0].buf = cast[cstring](addr wr_buf)
+  msgs[0].buf = cast[cstring](unsafeAddr writebuf[0])
   packets.msgs = addr msgs[0]
   packets.nmsgs = 1
 
@@ -104,29 +99,26 @@ proc write*(self: I2cdev, writebuf: openArray[char|uint8]): bool =
 proc read*(self: I2cdev, readlen: int): seq[char] =
   var packets: I2c_rdwr_ioctl_data
   var msgs: array[1, I2c_msg]
-  var rd_buf: array[256, char]
+  result = newSeq[char](readlen)
 
   # Setting up the register write
   msgs[0].`addr` = self.address.uint16
   msgs[0].flags = I2C_M_RD
   msgs[0].len = readlen.uint16
-  msgs[0].buf = cast[cstring](addr rd_buf)
+  msgs[0].buf = cast[cstring](addr result[0])
   packets.msgs = addr msgs[0]
   packets.nmsgs = 1
 
   let res = posix.ioctl(self.fd.getFileHandle, I2C_RDWR, addr packets)
   if res < 0:
-    result = @[]
-  else:
-    for i in 0..<readlen:
-      result.add(rd_buf[i])
+    result.setLen(0)
 
 
 when isMainModule:
   proc bcd2bin(bcd: char): int =
     result = (((bcd.uint8 and 0xf0) shr 4) * 10 + (bcd.uint8 and 0x0f)).int
 
-  var i2c = i2c_open(1, 0x32)
+  let i2c = newI2c(1, 0x32)
   if i2c.isNil:
     quit("open i2c failed")
   var wbuf: seq[uint8] = @[0'u8]

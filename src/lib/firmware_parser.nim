@@ -49,6 +49,7 @@ proc load_firmware*(filename: string): Firmware =
     let crc_val = calc_CRC_CCITT(segment.buffer)
     segment.crc = crc_val
 
+
 when isMainModule:
   import strformat
 
