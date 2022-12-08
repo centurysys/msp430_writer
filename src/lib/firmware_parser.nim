@@ -21,9 +21,10 @@ proc load_firmware*(filename: string): Firmware =
   defer:
     fd.close()
 
-  var segment: MemSegment
-  var in_section = false
-  var ok = false
+  var
+    segment: MemSegment
+    in_section = false
+    ok = false
   while true:
     let line = fd.readLine().strip()
     if line == "q":
@@ -45,6 +46,8 @@ proc load_firmware*(filename: string): Firmware =
       let bytes = line.split(" ").mapIt(uint8(it.parseHexInt()))
       for b in bytes:
         segment.buffer.add(char(b))
+  if not ok or result.isNil:
+    quit("format error", 3)
   for segment in result.segments:
     let crc_val = calc_CRC_CCITT(segment.buffer)
     segment.crc = crc_val

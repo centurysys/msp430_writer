@@ -215,7 +215,8 @@ proc main(): int =
   app.load_firmware(app.options.firmware)
   app.invoke_bsl()
 
-  discard app.mass_erase()
+  if not app.mass_erase():
+    quit("Mass-erase failed.", 1)
   os.sleep(500)
 
   var unlock_ok = false
@@ -242,6 +243,7 @@ proc main(): int =
 
   app.run_firmware()
   quit(0)
+
 
 when isMainModule:
   discard main()
