@@ -2,7 +2,7 @@
 # CRC-CCITT(0xffff) for MSP430 BSL
 # =============================================================================
 
-proc createCrcTable(poly: uint16): array[0..255, uint16] =
+func createCrcTable(poly: uint16): array[0..255, uint16] =
   for i in 0..255:
     var
       crc = 0'u16
@@ -17,7 +17,7 @@ proc createCrcTable(poly: uint16): array[0..255, uint16] =
 
 const crcTable = createCrcTable(0x1021)
 
-proc calc_CRC_CCITT*(buf: openArray[char|uint8]): uint16 =
+func calc_CRC_CCITT*(buf: openArray[char|uint8]): uint16 =
   result = uint16(0xffff)
   for i in 0..buf.high:
     result = (result shl 8) xor crcTable[((result shr 8) xor uint8(buf[i])) and 0x00ff]
@@ -32,9 +32,9 @@ when isMainModule:
   var crc: uint16
 
   crc = calc_CRC_CCITT(buf)
-  echo fmt"CRC-CCITT: {buf} -> 0x{crc:04x}"
+  echo &"CRC-CCITT: {buf} -> 0x{crc:04x}"
   crc = calc_CRC_CCITT(buf2)
-  echo fmt"CRC-CCITT: {buf2} -> 0x{crc:04x}"
+  echo &"CRC-CCITT: {buf2} -> 0x{crc:04x}"
 
   let s = "hogehoge".toSeq
-  echo fmt"CRC-CCITT: {s} -> 0x{calc_CRC_CCITT(s):04x}"
+  echo &"CRC-CCITT: {s} -> 0x{calc_CRC_CCITT(s):04x}"

@@ -15,20 +15,21 @@ type
     flags: cushort
     len: cushort
     buf: cstring
-  I2c_rdwr_ioctl_data {.importc: "struct i2c_rdwr_ioctl_data", header: "<linux/i2c-dev.h>".} = object
+  I2c_rdwr_ioctl_data {.importc: "struct i2c_rdwr_ioctl_data",
+      header: "<linux/i2c-dev.h>".} = object
     msgs: ptr I2c_msg #  pointers to i2c_msgs
     nmsgs: cuint      #  number of i2c_msgs
 
 const
   I2C_M_RD           = 0x0001  # read data, from slave to master
-  I2C_M_TEN          = 0x0010  # this is a ten bit chip address
-  I2C_M_DMA_SAFE     = 0x0200  # the buffer of this message is DMA safe
-  I2C_M_RECV_LEN     = 0x0400  # length will be first received byte
-  I2C_M_NO_RD_ACK    = 0x0800  # if I2C_FUNC_PROTOCOL_MANGLING
-  I2C_M_IGNORE_NAK   = 0x1000  # if I2C_FUNC_PROTOCOL_MANGLING
-  I2C_M_REV_DIR_ADDR = 0x2000  # if I2C_FUNC_PROTOCOL_MANGLING
-  I2C_M_NOSTART      = 0x4000  # if I2C_FUNC_NOSTART
-  I2C_M_STOP         = 0x8000  # if I2C_FUNC_PROTOCOL_MANGLING
+  #I2C_M_TEN          = 0x0010  # this is a ten bit chip address
+  #I2C_M_DMA_SAFE     = 0x0200  # the buffer of this message is DMA safe
+  #I2C_M_RECV_LEN     = 0x0400  # length will be first received byte
+  #I2C_M_NO_RD_ACK    = 0x0800  # if I2C_FUNC_PROTOCOL_MANGLING
+  #I2C_M_IGNORE_NAK   = 0x1000  # if I2C_FUNC_PROTOCOL_MANGLING
+  #I2C_M_REV_DIR_ADDR = 0x2000  # if I2C_FUNC_PROTOCOL_MANGLING
+  #I2C_M_NOSTART      = 0x4000  # if I2C_FUNC_NOSTART
+  #I2C_M_STOP         = 0x8000  # if I2C_FUNC_PROTOCOL_MANGLING
 
 const
   I2C_RDWR = 0x0707
@@ -37,7 +38,7 @@ const
 #
 # -------------------------------------------------------------------
 proc i2c_open*(bus: int, address: uint8, debug: bool = false): I2cdev =
-  let devname = fmt"/dev/i2c-{bus}"
+  let devname = &"/dev/i2c-{bus}"
   let fd = open(devname, fmReadWrite)
   result = new I2cdev
   result.fd = fd
@@ -131,7 +132,7 @@ when isMainModule:
   var wbuf: seq[uint8] = @[0'u8]
 
   var buf = i2c.write_read(wbuf, 0x0d + 1)
-  echo fmt"buf lenght: {buf.len}"
+  echo &"buf lenght: {buf.len}"
   if buf.len > 0:
     try:
       let year = bcd2bin(buf[6]) + 2000
@@ -140,6 +141,6 @@ when isMainModule:
       let hour = bcd2bin(buf[2])
       let minute = bcd2bin(buf[1])
       let second = bcd2bin(buf[0])
-      echo fmt"{year}/{month:02d}/{day:02d} {hour:02d}:{minute:02d}:{second:02d} [UTC]"
+      echo &"{year}/{month:02d}/{day:02d} {hour:02d}:{minute:02d}:{second:02d} [UTC]"
     except:
       echo "length error"

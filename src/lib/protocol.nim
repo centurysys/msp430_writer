@@ -36,8 +36,8 @@ const
   CMD_LOAD_PC = 0x17
   CMD_RECV_DATA = 0x18
   CMD_BSL_VERSION = 0x19
-  RESP_COMMAND = 0x3A
-  RESP_MESSAGE = 0x3B
+  #RESP_COMMAND = 0x3A
+  #RESP_MESSAGE = 0x3B
 
 const
   HEADER = 0x80.char
@@ -46,22 +46,22 @@ const
 const
   SKIP_ADDRESS = 0xffffffff.uint32
 
-proc byte1[T](val: T): char =
+func byte1[T](val: T): char =
   result = ((val and 0xff0000) shr 16).char
 
-proc byte2[T](val: T): char =
+func byte2[T](val: T): char =
   result = ((val and 0x00ff00) shr 8).char
 
-proc byte3[T](val: T): char =
+func byte3[T](val: T): char =
   result = (val and 0xff).char
 
-proc highbyte[T](val: T): char =
+func highbyte[T](val: T): char =
   result = ((val and 0xff00) shr 8).char
 
-proc lowbyte[T](val: T): char =
+func lowbyte[T](val: T): char =
   result = (val and 0xff).char
 
-proc get_uint16(payload: openArray[char], pos: int): uint16 =
+func get_uint16(payload: openArray[char], pos: int): uint16 =
   result = payload[pos].uint16 + (payload[pos + 1].uint16 shl 8)
 
 # ---------------------------------------------------------
@@ -77,7 +77,7 @@ proc newMsp430*(bus: int = 1, address: uint8 = 0x48, debug = false): Msp430 =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc check_response(payload: openArray[char]): PktResponse =
+func check_response(payload: openArray[char]): PktResponse =
   result.res = false
   if payload[0] != ACK:
     # invalid header
@@ -290,9 +290,9 @@ when isMainModule:
   let res_version = msp430.get_version()
   if res_version.isSome:
     let version_info = res_version.get
-    echo fmt"vendor: {version_info.vendor:02x}"
-    echo fmt"interpreter: {version_info.interpreter:02x}"
-    echo fmt"api: {version_info.api:02x}"
-    echo fmt"interface: {version_info.`interface`:02x}"
+    echo &"vendor: {version_info.vendor:02x}"
+    echo &"interpreter: {version_info.interpreter:02x}"
+    echo &"api: {version_info.api:02x}"
+    echo &"interface: {version_info.`interface`:02x}"
   else:
     echo "failed"

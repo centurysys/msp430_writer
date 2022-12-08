@@ -25,7 +25,7 @@ type
 #
 # ---------------------------------------------------------
 proc parse_args(): AppOptions =
-  var p = newParser("msp430_writer"):
+  let p = newParser("msp430_writer"):
     argparse.option("-c", "--config",
         help = "config file")
     argparse.option("-f", "--firmware",
@@ -36,7 +36,7 @@ proc parse_args(): AppOptions =
         help = "MSP430 address")
     argparse.option("-s", "--chip", default = "",
         help = "MSP430 select chip")
-  var opts = p.parse()
+  let opts = p.parse()
   if opts.help:
     quit(1)
   if opts.config.len > 0:

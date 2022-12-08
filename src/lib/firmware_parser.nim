@@ -54,14 +54,14 @@ when isMainModule:
 
   let firm = load_firmware("firm.txt")
   for segment in firm.segments.items():
-    echo fmt"* start address: {segment.startAddress:04x}"
+    echo &"* start address: {segment.startAddress:04x}"
     for idx in 0..segment.buffer.high:
       let pos = idx mod 16
       if pos == 0:
-        stdout.write(fmt"{idx:04x}")
-      stdout.write(fmt" {segment.buffer[idx]:02x}")
+        stdout.write(&"{idx:04x}")
+      stdout.write(&" {segment.buffer[idx]:02x}")
       if pos == 15:
         echo ""
     echo ""
-    echo fmt"  section length: 0x{segment.buffer.len:04x}"
-    echo fmt"  CRC: 0x{segment.crc:04x}"
+    echo &"  section length: 0x{segment.buffer.len:04x}"
+    echo &"  CRC: 0x{segment.crc:04x}"
