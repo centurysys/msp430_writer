@@ -8,6 +8,7 @@ type
     busnumber*: int
     address*: uint8
     chip*: string
+    eraseOnly*: bool
 
 # ---------------------------------------------------------
 #
