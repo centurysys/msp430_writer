@@ -30,6 +30,8 @@ proc parse_args(): AppOptions =
         help = "config file")
     argparse.option("-f", "--firmware",
         help = "Firmware filename(TI-TXT format)")
+    argparse.flag("-e", "--erase-only",
+        help = "Mass-Erase only")
     argparse.option("-b", "--busnum", default = "1",
         help = "I2C bus number")
     argparse.option("-a", "--address", default = "0x48",
@@ -49,6 +51,8 @@ proc parse_args(): AppOptions =
     result.address = opts.address.parseHexInt.uint8
   if result.chip.len == 0 and opts.chip.len > 0:
     result.chip = opts.chip
+  if opts.eraseOnly:
+    result.eraseOnly = true
 
 # ---------------------------------------------------------
 #
@@ -215,8 +219,12 @@ proc main(): int =
   app.load_firmware(app.options.firmware)
   app.invoke_bsl()
 
-  if not app.mass_erase():
-    quit("Mass-erase failed.", 1)
+  let erased = app.mass_erase()
+  if not erased:
+    quit("Failed to do Mass-Erase.")
+
+  if options.eraseOnly:
+    quit(0)
   os.sleep(500)
 
   var unlock_ok = false
