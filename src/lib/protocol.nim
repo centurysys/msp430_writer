@@ -7,8 +7,9 @@ import ./crc
 import ./i2c
 
 type
-  Msp430* = ref object
+  Msp430obj = object
     dev: I2cdev
+  Msp430* = ref Msp430obj
   BslPacket* = object
     command: uint8
     address: uint32
@@ -68,7 +69,7 @@ func get_uint16(payload: openArray[char], pos: int): uint16 =
 #
 # ---------------------------------------------------------
 proc newMsp430*(bus: int = 1, address: uint8 = 0x48, debug = false): Msp430 =
-  var dev = i2c_open(bus, address, debug)
+  let dev = newI2c(bus, address, debug)
   if not dev.opened:
     return nil
   result = new Msp430

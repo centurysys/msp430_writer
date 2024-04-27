@@ -11,5 +11,5 @@ bin           = @["msp430_writer"]
 
 # Dependencies
 
-requires "nim >= 1.6.4"
+requires "nim >= 1.6.10"
 requires "argparse == 0.10.1"

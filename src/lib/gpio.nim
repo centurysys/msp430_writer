@@ -29,7 +29,7 @@ proc set(fd: File, val: string) =
 # -------------------------------------------------------------------
 proc newGpio(gpio_name: string): Gpio =
   let basedir = &"/sys/class/leds/{gpio_name}"
-  let nodetrigger = &"{basedir}/trigger"
+  let node_trigger = &"{basedir}/trigger"
   let fd_trigger = open(node_trigger, fmReadWrite)
   defer:
     fd_trigger.close()
@@ -57,8 +57,7 @@ proc wait(msec: int) =
 # -------------------------------------------------------------------
 # MSP430 Reset
 # -------------------------------------------------------------------
-proc newMsp430Reset*(chip: string = ""):
-    Msp430Reset =
+proc newMsp430Reset*(chip: string = ""): Msp430Reset =
   result = new Msp430Reset
   let pin_reset = if chip.len > 0: &"MSP430_{chip}_RST" else: "MSP430_RST"
   let pin_test = if chip.len > 0: &"MSP430_{chip}_TEST" else: "MSP430_TEST"

@@ -98,14 +98,16 @@ proc load_firmware(self: App, filename: string) =
 #
 # ---------------------------------------------------------
 proc write_segment(self: App, segment: MemSegment): bool =
-  var address = segment.startAddress
-  var pos = 0
-  let wr_unit = 16
+  var
+    address = segment.startAddress
+    pos = 0
+  const wr_unit = 16
 
   while pos < (segment.buffer.len - 1):
-    let bytes_remain = segment.buffer.len - pos
-    let num_write = if bytes_remain > wr_unit: wr_unit else: bytes_remain
-    let data = segment.buffer[pos..<(pos + num_write)]
+    let
+      bytes_remain = segment.buffer.len - pos
+      num_write = if bytes_remain > wr_unit: wr_unit else: bytes_remain
+      data = segment.buffer[pos..<(pos + num_write)]
 
     var write_ok = false
     for retry in 0..<3:
@@ -142,16 +144,19 @@ proc write_firmware(self: App): bool =
 #
 # ---------------------------------------------------------
 proc verify_segment(self: App, segment: MemSegment): bool =
-  let address = segment.startAddress.uint32
-  let segment_len = segment.buffer.len
-  let chunksize = 16'u16
-  var buf = newSeqOfCap[char](segment_len)
-  var pos = 0'u32
-  var remain = segment_len.uint16
+  let
+    address = segment.startAddress.uint32
+    segment_len = segment.buffer.len
+  const chunksize = 16'u16
+  var
+    buf = newSeqOfCap[char](segment_len)
+    pos = 0'u32
+    remain = segment_len.uint16
 
   while remain > 0:
-    let readlen = if remain > chunksize: chunksize else: remain
-    let chunk = self.msp430.read_data(address + pos, readlen.int16)
+    let
+      readlen = if remain > chunksize: chunksize else: remain
+      chunk = self.msp430.read_data(address + pos, readlen.int16)
     if chunk.len == 0:
       echo "! verify_segment: read failed."
       return false
@@ -198,7 +203,7 @@ proc run_firmware(self: App) =
 #
 # ---------------------------------------------------------
 proc main(): int =
-  var app = new App
+  let app = new App
   let options = parse_args()
   app.options = options
   echo "MSP430 firmware updater"
@@ -210,7 +215,8 @@ proc main(): int =
   app.load_firmware(app.options.firmware)
   app.invoke_bsl()
 
-  discard app.mass_erase()
+  if not app.mass_erase():
+    quit("Mass-erase failed.", 1)
   os.sleep(500)
 
   var unlock_ok = false
@@ -237,6 +243,7 @@ proc main(): int =
 
   app.run_firmware()
   quit(0)
+
 
 when isMainModule:
   discard main()
