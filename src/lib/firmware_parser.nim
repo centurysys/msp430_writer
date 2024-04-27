@@ -6,17 +6,19 @@ import std/sequtils
 import ./crc
 
 type
-  MemSegment* = ref object
+  MemSegmentObj = object
     startAddress*: uint16
     buffer*: seq[char]
     crc*: uint16
-  Firmware* = ref object
+  MemSegment* = ref MemSegmentObj
+  FirmwareObj = object
     segments*: seq[MemSegment]
+  Firmware* = ref FirmwareObj
 
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc load_firmware*(filename: string): Firmware =
+proc loadFirmware*(filename: string): Firmware =
   let fd = open(filename)
   defer:
     fd.close()
@@ -49,14 +51,14 @@ proc load_firmware*(filename: string): Firmware =
   if not ok or result.isNil:
     quit("format error", 3)
   for segment in result.segments:
-    let crc_val = calc_CRC_CCITT(segment.buffer)
+    let crc_val = calcCrcCCITT(segment.buffer)
     segment.crc = crc_val
 
 
 when isMainModule:
   import strformat
 
-  let firm = load_firmware("firm.txt")
+  let firm = loadFirmware("firm.txt")
   for segment in firm.segments.items():
     echo &"* start address: {segment.startAddress:04x}"
     for idx in 0..segment.buffer.high:

@@ -8,13 +8,15 @@ type
   Trigger* {.pure.} = enum
     None = "none"
     Oneshot = "oneshot"
-  Gpio* = ref object
+  GpioObj = object
     name: string
     basedir: string
     fd: File
-  Msp430Reset* = ref object
+  Gpio* = ref GpioObj
+  Msp430ResetObj = object
     test: Gpio
     reset: Gpio
+  Msp430Reset* = ref Msp430ResetObj
 
 # -------------------------------------------------------------------
 #
@@ -67,7 +69,7 @@ proc newMsp430Reset*(chip: string = ""): Msp430Reset =
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc invoke_bsl*(self: Msp430Reset) =
+proc invokeBsl*(self: Msp430Reset) =
   # TEST -> L
   self.test.set(false)
   # RESET -> L
@@ -93,7 +95,7 @@ proc invoke_bsl*(self: Msp430Reset) =
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc reset_mcu*(self: Msp430Reset) =
+proc resetMcu*(self: Msp430Reset) =
   self.test.set(false)
   self.reset.set(true)
   os.sleep(10)
@@ -103,4 +105,4 @@ proc reset_mcu*(self: Msp430Reset) =
 
 when isMainModule:
   let msp430 = newMsp430Reset()
-  msp430.invoke_bsl()
+  msp430.invokeBsl()

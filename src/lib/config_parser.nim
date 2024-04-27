@@ -13,7 +13,7 @@ type
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc parse_config*(path: string): AppOptions =
+proc parseConfig*(path: string): AppOptions =
   for line in path.readFile.splitLines():
     if line.startsWith("#"):
       continue

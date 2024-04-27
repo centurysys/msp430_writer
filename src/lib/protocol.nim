@@ -62,7 +62,7 @@ func highbyte[T](val: T): char =
 func lowbyte[T](val: T): char =
   result = (val and 0xff).char
 
-func get_uint16(payload: openArray[char], pos: int): uint16 =
+func getUint16(payload: openArray[char], pos: int): uint16 =
   result = payload[pos].uint16 + (payload[pos + 1].uint16 shl 8)
 
 # ---------------------------------------------------------
@@ -78,7 +78,7 @@ proc newMsp430*(bus: int = 1, address: uint8 = 0x48, debug = false): Msp430 =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-func check_response(payload: openArray[char]): PktResponse =
+func checkResponse(payload: openArray[char]): PktResponse =
   result.res = false
   if payload[0] != ACK:
     # invalid header
@@ -88,13 +88,13 @@ func check_response(payload: openArray[char]): PktResponse =
     # invalid response header
     result.reason = ResReason.HeaderError
     return
-  let length = int(payload.get_uint16(2))
+  let length = int(payload.getUint16(2))
   if payload.len != length + 6:
     # invalid response length
     result.reason = ResReason.LengthError
     return
-  let crc_pkt = payload.get_uint16(payload.len - 2)
-  let crc_calc = calc_CRC_CCITT(payload[4..payload.len - 3])
+  let crc_pkt = payload.getUint16(payload.len - 2)
+  let crc_calc = calcCrcCCITT(payload[4..payload.len - 3])
   if crc_pkt != crc_calc:
     # CRC error
     result.reason = ResReason.CrcError
@@ -105,8 +105,8 @@ func check_response(payload: openArray[char]): PktResponse =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc send_recv_i2c_packet(self: Msp430, packet: BslPacket, readlen: int,
-                          interval: int = 2): seq[char] =
+proc sendRecvI2cPacket(self: Msp430, packet: BslPacket, readlen: int,
+    interval: int = 2): seq[char] =
   var xbuf = newSeqOfCap[char](packet.data.len + 8)
   xbuf.add(HEADER)
   var datalen = packet.data.len + 1
@@ -123,13 +123,13 @@ proc send_recv_i2c_packet(self: Msp430, packet: BslPacket, readlen: int,
 
   if datalen > 0:
     xbuf.add(packet.data)
-  let crc_val = calc_CRC_CCITT(xbuf[3..xbuf.high])
+  let crc_val = calcCrcCCITT(xbuf[3..xbuf.high])
   xbuf.add(crc_val.lowbyte)
   xbuf.add(crc_val.highbyte)
 
   let wr_result = self.dev.write(xbuf)
   if not wr_result:
-    echo "! send_recv_i2c_packet: write failed."
+    echo "! sendRecvI2cPacket: write failed."
     result = @[]
   else:
     os.sleep(interval)
@@ -138,7 +138,7 @@ proc send_recv_i2c_packet(self: Msp430, packet: BslPacket, readlen: int,
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc send_i2c_packet(self: Msp430, packet: BslPacket): bool =
+proc sendI2cPacket(self: Msp430, packet: BslPacket): bool =
   var xbuf = newSeqOfCap[char](packet.data.len + 8)
   xbuf.add(HEADER)
   let datalen = packet.data.len + 1
@@ -153,7 +153,7 @@ proc send_i2c_packet(self: Msp430, packet: BslPacket): bool =
 
   if datalen > 0:
     xbuf.add(packet.data)
-  let crc_val = calc_CRC_CCITT(xbuf[3..xbuf.high])
+  let crc_val = calcCrcCCITT(xbuf[3..xbuf.high])
   xbuf.add(crc_val.lowbyte)
   xbuf.add(crc_val.highbyte)
 
@@ -162,36 +162,36 @@ proc send_i2c_packet(self: Msp430, packet: BslPacket): bool =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc invoke_bsl*(self: Msp430, invoke_str: array[8, char]): bool =
+proc invokeBsl*(self: Msp430, invoke_str: array[8, char]): bool =
   result = self.dev.write(invoke_str)
 
 # ---------------------------------------------------------
 # Command:0x10 : RX Data Block (4.1.5.1)
 # ---------------------------------------------------------
-proc send_data*(self: Msp430, address: uint32, buf: openArray[char]): bool =
+proc sendData*(self: Msp430, address: uint32, buf: openArray[char]): bool =
   var packet: BslPacket
   packet.command = CMD_SEND_DATA
   packet.address = address
   packet.data = @buf
-  let res = self.send_recv_i2c_packet(packet, 1)
+  let res = self.sendRecvI2cPacket(packet, 1)
   if res.len == 0:
     return false
-  let pkt_state = check_response(res)
+  let pkt_state = checkResponse(res)
   return pkt_state.res
 
 # ---------------------------------------------------------
 # Command:0x11 : RX Password (4.1.5.2)
 # ---------------------------------------------------------
-proc unlock_device*(self: Msp430, password: array[32, char]): bool =
+proc unlockDevice*(self: Msp430, password: array[32, char]): bool =
   result = false
   var packet: BslPacket
   packet.command = CMD_SEND_PASSWORD
   packet.address = SKIP_ADDRESS
   packet.data = @password
-  let res = self.send_recv_i2c_packet(packet, 1)
+  let res = self.sendRecvI2cPacket(packet, 1)
   if res.len == 0:
     return result
-  let pkt_state = check_response(res)
+  let pkt_state = checkResponse(res)
   if pkt_state.res:
     # check result
     let msg = res[5]
@@ -201,28 +201,28 @@ proc unlock_device*(self: Msp430, password: array[32, char]): bool =
 # ---------------------------------------------------------
 # Command:0x15 : Mass Erase (4.1.5.3)
 # ---------------------------------------------------------
-proc mass_erase*(self: Msp430): bool =
+proc massErase*(self: Msp430): bool =
   var packet: BslPacket
   packet.command = CMD_MASS_ERASE
   packet.address = SKIP_ADDRESS
   packet.data = @[]
-  let res = self.send_recv_i2c_packet(packet, 1)
+  let res = self.sendRecvI2cPacket(packet, 1)
   if res.len == 0:
     return false
-  let pkt_state = check_response(res)
+  let pkt_state = checkResponse(res)
   return pkt_state.res
 
 # ---------------------------------------------------------
 # Command:0x16 : CRC Check (4.1.5.4)
 # ---------------------------------------------------------
-proc check_crc*(self: Msp430, address: uint32, length: uint16): Option[uint16] =
+proc checkCrc*(self: Msp430, address: uint32, length: uint16): Option[uint16] =
   var packet: BslPacket
   packet.command = CMD_CRC_CHECK
   packet.address = address
   packet.data = newSeqOfCap[char](2)
   packet.data.add(length.lowbyte)
   packet.data.add(length.highbyte)
-  let res = self.send_recv_i2c_packet(packet, 2, interval = 500)
+  let res = self.sendRecvI2cPacket(packet, 2, interval = 500)
   if res.len == 0:
     return none(uint16)
   var crc_val = res[5].uint16 + (res[6].uint16 shl 8)
@@ -231,27 +231,27 @@ proc check_crc*(self: Msp430, address: uint32, length: uint16): Option[uint16] =
 # ---------------------------------------------------------
 # Command:0x17 : Load PC (4.1.5.5)
 # ---------------------------------------------------------
-proc set_program_counter*(self: Msp430, address: uint16): bool =
+proc setProgramCounter*(self: Msp430, address: uint16): bool =
   var packet: BslPacket
   packet.command = CMD_LOAD_PC
   packet.address = address
   packet.data = @[]
-  result = self.send_i2c_packet(packet)
+  result = self.sendI2cPacket(packet)
 
 # ---------------------------------------------------------
 # Command:0x18 : TX Data Block (4.1.5.6)
 # ---------------------------------------------------------
-proc read_data*(self: Msp430, address: uint32, readlen: int16): seq[char] =
+proc readData*(self: Msp430, address: uint32, readlen: int16): seq[char] =
   var packet: BslPacket
   packet.command = CMD_RECV_DATA
   packet.address = address
   packet.data = newSeqOfCap[char](2)
   packet.data.add(readlen.lowbyte)
   packet.data.add(readlen.highbyte)
-  let res = self.send_recv_i2c_packet(packet, readlen)
+  let res = self.sendRecvI2cPacket(packet, readlen)
   if res.len == 0:
     return @[]
-  let pkt_state = check_response(res)
+  let pkt_state = checkResponse(res)
   if not pkt_state.res:
     return @[]
   result = res[5..<(5 + readlen)]
@@ -259,15 +259,15 @@ proc read_data*(self: Msp430, address: uint32, readlen: int16): seq[char] =
 # ---------------------------------------------------------
 # Command:0x19 : TX BSL Version (4.1.5.7)
 # ---------------------------------------------------------
-proc get_version*(self: Msp430): Option[BslVersionInfo] =
+proc getVersion*(self: Msp430): Option[BslVersionInfo] =
   var packet: BslPacket
   packet.command = CMD_BSL_VERSION
   packet.address = SKIP_ADDRESS
   packet.data = @[]
-  let res = self.send_recv_i2c_packet(packet, 4)
+  let res = self.sendRecvI2cPacket(packet, 4)
   if res.len == 0:
     return none(BslVersionInfo)
-  let pkt_state = check_response(res)
+  let pkt_state = checkResponse(res)
   if not pkt_state.res:
     return none(BslVersionInfo)
   var info: BslVersionInfo
@@ -279,21 +279,21 @@ proc get_version*(self: Msp430): Option[BslVersionInfo] =
 
 
 when isMainModule:
-  import algorithm
-  import strformat
+  import std/algorithm
+  import std/strformat
 
   var msp430 = newMsp430(debug = true)
   var password: array[32, char]
   password.fill(0xff.char)
-  let unlock_result = msp430.unlock_device(password)
-  if not unlock_result:
+  let unlockResult = msp430.unlockDevice(password)
+  if not unlockResult:
     quit("unlock failed.")
-  let res_version = msp430.get_version()
-  if res_version.isSome:
-    let version_info = res_version.get
-    echo &"vendor: {version_info.vendor:02x}"
-    echo &"interpreter: {version_info.interpreter:02x}"
-    echo &"api: {version_info.api:02x}"
-    echo &"interface: {version_info.`interface`:02x}"
+  let resVersion = msp430.getVersion()
+  if resVersion.isSome:
+    let versionInfo = resVersion.get
+    echo &"vendor: {versionInfo.vendor:02x}"
+    echo &"interpreter: {versionInfo.interpreter:02x}"
+    echo &"api: {versionInfo.api:02x}"
+    echo &"interface: {versionInfo.`interface`:02x}"
   else:
     echo "failed"

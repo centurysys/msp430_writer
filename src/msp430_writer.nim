@@ -1,7 +1,7 @@
 # =============================================================================
 # MSP430 In-System-Programmer
 #
-# Copyright(c) 2020-2022 Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
+# Copyright(c) 2020-2024 Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
 # =============================================================================
 import std/algorithm
 import std/os
@@ -24,7 +24,7 @@ type
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc parse_args(): AppOptions =
+proc parseArgs(): AppOptions =
   let p = newParser("msp430_writer"):
     argparse.option("-c", "--config",
         help = "config file")
@@ -42,7 +42,7 @@ proc parse_args(): AppOptions =
   if opts.help:
     quit(1)
   if opts.config.len > 0:
-    result = parse_config(opts.config)
+    result = parseConfig(opts.config)
   if result.firmware.len == 0:
     result.firmware = opts.firmware
   if result.busnumber == 0:
@@ -57,9 +57,9 @@ proc parse_args(): AppOptions =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc invoke_bsl(self: App) =
+proc invokeBsl(self: App) =
   stdout.write("* Invoke MSP430 BSL...")
-  self.msp430reset.invoke_bsl()
+  self.msp430reset.invokeBsl()
   echo "done."
   stdout.write("* Wait for BSL booting...")
   os.sleep(2200)
@@ -68,10 +68,10 @@ proc invoke_bsl(self: App) =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc unlock_device(self: App): bool =
+proc unlockDevice(self: App): bool =
   var password: array[32, char]
   password.fill(0, password.high, 0xff.char)
-  if self.msp430.unlock_device(password):
+  if self.msp430.unlockDevice(password):
     echo "* Unlock device succeeded."
     result = true
   else:
@@ -81,9 +81,9 @@ proc unlock_device(self: App): bool =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc mass_erase(self: App): bool =
+proc massErase(self: App): bool =
   stdout.write("* Mass-erase device...")
-  if self.msp430.mass_erase():
+  if self.msp430.massErase():
     echo "done."
     result = true
   else:
@@ -93,15 +93,15 @@ proc mass_erase(self: App): bool =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc load_firmware(self: App, filename: string) =
+proc loadFirmware(self: App, filename: string) =
   stdout.write(&"* Load firmware from file: {filename} ...")
-  self.firmware = load_firmware(filename)
+  self.firmware = loadFirmware(filename)
   echo "done."
 
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc write_segment(self: App, segment: MemSegment): bool =
+proc writeSegment(self: App, segment: MemSegment): bool =
   var
     address = segment.startAddress
     pos = 0
@@ -109,22 +109,22 @@ proc write_segment(self: App, segment: MemSegment): bool =
 
   while pos < (segment.buffer.len - 1):
     let
-      bytes_remain = segment.buffer.len - pos
-      num_write = if bytes_remain > wr_unit: wr_unit else: bytes_remain
-      data = segment.buffer[pos..<(pos + num_write)]
+      bytesRemain = segment.buffer.len - pos
+      numWrite = if bytesRemain > wr_unit: wr_unit else: bytesRemain
+      data = segment.buffer[pos..<(pos + numWrite)]
 
-    var write_ok = false
+    var writeOk = false
     for retry in 0..<3:
-      if self.msp430.send_data((address + pos.uint16).uint32, data):
+      if self.msp430.sendData((address + pos.uint16).uint32, data):
         stderr.write(".")
-        pos += num_write
+        pos += numWrite
         os.sleep(2)
-        write_ok = true
+        writeOk = true
         break
       else:
         stderr.write("x")
         os.sleep(100)
-    if not write_ok:
+    if not writeOk:
       echo &"\nwrite_segment failed at pos: {pos}"
       return false
 
@@ -133,11 +133,11 @@ proc write_segment(self: App, segment: MemSegment): bool =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc write_firmware(self: App): bool =
+proc writeFirmware(self: App): bool =
   for idx, segment in self.firmware.segments.pairs:
     stdout.write(&"* Writing segment No. {idx + 1} ")
     stdout.flushFile()
-    if not self.write_segment(segment):
+    if not self.writeSegment(segment):
       echo " Writing Firmware Failed."
       return false
     stdout.write(" OK.\n")
@@ -147,7 +147,7 @@ proc write_firmware(self: App): bool =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc verify_segment(self: App, segment: MemSegment): bool =
+proc verifySegment(self: App, segment: MemSegment): bool =
   let
     address = segment.startAddress.uint32
     segment_len = segment.buffer.len
@@ -160,31 +160,31 @@ proc verify_segment(self: App, segment: MemSegment): bool =
   while remain > 0:
     let
       readlen = if remain > chunksize: chunksize else: remain
-      chunk = self.msp430.read_data(address + pos, readlen.int16)
+      chunk = self.msp430.readData(address + pos, readlen.int16)
     if chunk.len == 0:
-      echo "! verify_segment: read failed."
+      echo "! verifySegment: read failed."
       return false
     buf.add(chunk)
     pos += readlen
     remain -= readlen
-  let crc_buf = calc_CRC_CCITT(buf)
-  if crc_buf == segment.crc:
+  let crcBuf = calcCrcCCITT(buf)
+  if crcBuf == segment.crc:
     result = true
   else:
-    echo "! verify_segment: crc mismatch"
+    echo "! verifySegment: crc mismatch"
     return false
 
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc verify_firmware(self: App): bool =
+proc verifyFirmware(self: App): bool =
   for idx, segment in self.firmware.segments.pairs:
     var verify_ok = false
 
     for retry in 0..<3:
       stdout.write(&"* Verify segment No. {idx + 1} ...")
       stdout.flushFile()
-      if self.verify_segment(segment):
+      if self.verifySegment(segment):
         echo " OK."
         verify_ok = true
         os.sleep(100)
@@ -200,15 +200,15 @@ proc verify_firmware(self: App): bool =
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc run_firmware(self: App) =
-  self.msp430reset.reset_mcu()
+proc runFirmware(self: App) =
+  self.msp430reset.resetMcu()
 
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
 proc main(): int =
   let app = new App
-  let options = parse_args()
+  let options = parseArgs()
   app.options = options
   echo "MSP430 firmware updater"
   app.msp430reset = newMsp430Reset(chip = options.chip)
@@ -216,10 +216,10 @@ proc main(): int =
   if app.msp430.isNil:
     quit("open I2C driver failed.", 1)
 
-  app.load_firmware(app.options.firmware)
-  app.invoke_bsl()
+  app.loadFirmware(app.options.firmware)
+  app.invokeBsl()
 
-  let erased = app.mass_erase()
+  let erased = app.massErase()
   if not erased:
     quit("Failed to do Mass-Erase.")
 
@@ -227,29 +227,29 @@ proc main(): int =
     quit(0)
   os.sleep(500)
 
-  var unlock_ok = false
+  var unlockOk = false
   for i in 0..2:
-    if app.unlock_device():
-      unlock_ok = true
+    if app.unlockDevice():
+      unlockOk = true
       break
     echo "! password not match, mass-erase."
     if i < 2:
       os.sleep(100)
 
-  if not unlock_ok:
+  if not unlockOk:
     quit("Device unlock failed.", 1)
 
   os.sleep(500)
 
-  if not app.write_firmware():
+  if not app.writeFirmware():
     quit("write firmware failed.", 1)
 
   os.sleep(1000)
 
-  if not app.verify_firmware():
+  if not app.verifyFirmware():
     quit("verify(CRC check) failed.", 1)
 
-  app.run_firmware()
+  app.runFirmware()
   quit(0)
 
 
