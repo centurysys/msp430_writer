@@ -105,12 +105,12 @@ proc writeSegment(self: App, segment: MemSegment): bool =
   var
     address = segment.startAddress
     pos = 0
-  const wr_unit = 16
+  const wrUnit = 16
 
   while pos < (segment.buffer.len - 1):
     let
       bytesRemain = segment.buffer.len - pos
-      numWrite = if bytesRemain > wr_unit: wr_unit else: bytesRemain
+      numWrite = if bytesRemain > wrUnit: wrUnit else: bytesRemain
       data = segment.buffer[pos..<(pos + numWrite)]
 
     var writeOk = false
@@ -150,12 +150,12 @@ proc writeFirmware(self: App): bool =
 proc verifySegment(self: App, segment: MemSegment): bool =
   let
     address = segment.startAddress.uint32
-    segment_len = segment.buffer.len
+    segmentLen = segment.buffer.len
   const chunksize = 16'u16
   var
-    buf = newSeqOfCap[char](segment_len)
+    buf = newSeqOfCap[char](segmentLen)
     pos = 0'u32
-    remain = segment_len.uint16
+    remain = segmentLen.uint16
 
   while remain > 0:
     let
@@ -179,20 +179,20 @@ proc verifySegment(self: App, segment: MemSegment): bool =
 # ---------------------------------------------------------
 proc verifyFirmware(self: App): bool =
   for idx, segment in self.firmware.segments.pairs:
-    var verify_ok = false
+    var verifyOk = false
 
     for retry in 0..<3:
       stdout.write(&"* Verify segment No. {idx + 1} ...")
       stdout.flushFile()
       if self.verifySegment(segment):
         echo " OK."
-        verify_ok = true
+        verifyOk = true
         os.sleep(100)
         break
       else:
         echo " Failed."
         os.sleep(500)
-    if not verify_ok:
+    if not verifyOk:
       return false
 
   return true

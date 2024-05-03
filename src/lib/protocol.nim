@@ -93,9 +93,9 @@ func checkResponse(payload: openArray[char]): PktResponse =
     # invalid response length
     result.reason = ResReason.LengthError
     return
-  let crc_pkt = payload.getUint16(payload.len - 2)
-  let crc_calc = calcCrcCCITT(payload[4..payload.len - 3])
-  if crc_pkt != crc_calc:
+  let crcPkt = payload.getUint16(payload.len - 2)
+  let crcCalc = calcCrcCCITT(payload[4..payload.len - 3])
+  if crcPkt != crcCalc:
     # CRC error
     result.reason = ResReason.CrcError
     return
@@ -123,12 +123,12 @@ proc sendRecvI2cPacket(self: Msp430, packet: BslPacket, readlen: int,
 
   if datalen > 0:
     xbuf.add(packet.data)
-  let crc_val = calcCrcCCITT(xbuf[3..xbuf.high])
-  xbuf.add(crc_val.lowbyte)
-  xbuf.add(crc_val.highbyte)
+  let crcVal = calcCrcCCITT(xbuf[3..xbuf.high])
+  xbuf.add(crcVal.lowbyte)
+  xbuf.add(crcVal.highbyte)
 
-  let wr_result = self.dev.write(xbuf)
-  if not wr_result:
+  let wrResult = self.dev.write(xbuf)
+  if not wrResult:
     echo "! sendRecvI2cPacket: write failed."
     result = @[]
   else:
@@ -153,17 +153,17 @@ proc sendI2cPacket(self: Msp430, packet: BslPacket): bool =
 
   if datalen > 0:
     xbuf.add(packet.data)
-  let crc_val = calcCrcCCITT(xbuf[3..xbuf.high])
-  xbuf.add(crc_val.lowbyte)
-  xbuf.add(crc_val.highbyte)
+  let crcVal = calcCrcCCITT(xbuf[3..xbuf.high])
+  xbuf.add(crcVal.lowbyte)
+  xbuf.add(crcVal.highbyte)
 
   result = self.dev.write(xbuf)
 
 # ---------------------------------------------------------
 #
 # ---------------------------------------------------------
-proc invokeBsl*(self: Msp430, invoke_str: array[8, char]): bool =
-  result = self.dev.write(invoke_str)
+proc invokeBsl*(self: Msp430, invokeStr: array[8, char]): bool =
+  result = self.dev.write(invokeStr)
 
 # ---------------------------------------------------------
 # Command:0x10 : RX Data Block (4.1.5.1)
@@ -176,8 +176,8 @@ proc sendData*(self: Msp430, address: uint32, buf: openArray[char]): bool =
   let res = self.sendRecvI2cPacket(packet, 1)
   if res.len == 0:
     return false
-  let pkt_state = checkResponse(res)
-  return pkt_state.res
+  let pktState = checkResponse(res)
+  return pktState.res
 
 # ---------------------------------------------------------
 # Command:0x11 : RX Password (4.1.5.2)
@@ -191,8 +191,8 @@ proc unlockDevice*(self: Msp430, password: array[32, char]): bool =
   let res = self.sendRecvI2cPacket(packet, 1)
   if res.len == 0:
     return result
-  let pkt_state = checkResponse(res)
-  if pkt_state.res:
+  let pktState = checkResponse(res)
+  if pktState.res:
     # check result
     let msg = res[5]
     if msg == 0.char:
@@ -209,8 +209,8 @@ proc massErase*(self: Msp430): bool =
   let res = self.sendRecvI2cPacket(packet, 1)
   if res.len == 0:
     return false
-  let pkt_state = checkResponse(res)
-  return pkt_state.res
+  let pktState = checkResponse(res)
+  return pktState.res
 
 # ---------------------------------------------------------
 # Command:0x16 : CRC Check (4.1.5.4)
@@ -225,8 +225,8 @@ proc checkCrc*(self: Msp430, address: uint32, length: uint16): Option[uint16] =
   let res = self.sendRecvI2cPacket(packet, 2, interval = 500)
   if res.len == 0:
     return none(uint16)
-  var crc_val = res[5].uint16 + (res[6].uint16 shl 8)
-  result = some(crc_val)
+  var crcVal = res[5].uint16 + (res[6].uint16 shl 8)
+  result = some(crcVal)
 
 # ---------------------------------------------------------
 # Command:0x17 : Load PC (4.1.5.5)
@@ -251,8 +251,8 @@ proc readData*(self: Msp430, address: uint32, readlen: int16): seq[char] =
   let res = self.sendRecvI2cPacket(packet, readlen)
   if res.len == 0:
     return @[]
-  let pkt_state = checkResponse(res)
-  if not pkt_state.res:
+  let pktState = checkResponse(res)
+  if not pktState.res:
     return @[]
   result = res[5..<(5 + readlen)]
 
@@ -267,8 +267,8 @@ proc getVersion*(self: Msp430): Option[BslVersionInfo] =
   let res = self.sendRecvI2cPacket(packet, 4)
   if res.len == 0:
     return none(BslVersionInfo)
-  let pkt_state = checkResponse(res)
-  if not pkt_state.res:
+  let pktState = checkResponse(res)
+  if not pktState.res:
     return none(BslVersionInfo)
   var info: BslVersionInfo
   info.vendor = res[5].uint8

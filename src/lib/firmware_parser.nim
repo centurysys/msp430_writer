@@ -25,7 +25,7 @@ proc loadFirmware*(filename: string): Firmware =
 
   var
     segment: MemSegment
-    in_section = false
+    inSection = false
     ok = false
   while true:
     let line = fd.readLine().strip()
@@ -38,12 +38,12 @@ proc loadFirmware*(filename: string): Firmware =
       let startAddress = line[1..line.high].parseHexInt()
       segment = new MemSegment
       segment.startAddress = uint16(startAddress)
-      if not in_section:
+      if not inSection:
         result = new Firmware
       result.segments.add(segment)
-      in_section = true
+      inSection = true
     else:
-      if not in_section:
+      if not inSection:
         quit("format error", 2)
       let bytes = line.split(" ").mapIt(uint8(it.parseHexInt()))
       for b in bytes:
@@ -51,8 +51,8 @@ proc loadFirmware*(filename: string): Firmware =
   if not ok or result.isNil:
     quit("format error", 3)
   for segment in result.segments:
-    let crc_val = calcCrcCCITT(segment.buffer)
-    segment.crc = crc_val
+    let crcVal = calcCrcCCITT(segment.buffer)
+    segment.crc = crcVal
 
 
 when isMainModule:
