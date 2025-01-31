@@ -6,24 +6,26 @@ import std/sequtils
 import ./crc
 
 type
-  MemSegment* = ref object
+  MemSegmentObj = object
     startAddress*: uint16
     buffer*: seq[char]
     crc*: uint16
-  Firmware* = ref object
+  MemSegment* = ref MemSegmentObj
+  FirmwareObj = object
     segments*: seq[MemSegment]
+  Firmware* = ref FirmwareObj
 
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc load_firmware*(filename: string): Firmware =
+proc loadFirmware*(filename: string): Firmware =
   let fd = open(filename)
   defer:
     fd.close()
 
   var
     segment: MemSegment
-    in_section = false
+    inSection = false
     ok = false
   while true:
     let line = fd.readLine().strip()
@@ -36,12 +38,12 @@ proc load_firmware*(filename: string): Firmware =
       let startAddress = line[1..line.high].parseHexInt()
       segment = new MemSegment
       segment.startAddress = uint16(startAddress)
-      if not in_section:
+      if not inSection:
         result = new Firmware
       result.segments.add(segment)
-      in_section = true
+      inSection = true
     else:
-      if not in_section:
+      if not inSection:
         quit("format error", 2)
       let bytes = line.split(" ").mapIt(uint8(it.parseHexInt()))
       for b in bytes:
@@ -49,14 +51,14 @@ proc load_firmware*(filename: string): Firmware =
   if not ok or result.isNil:
     quit("format error", 3)
   for segment in result.segments:
-    let crc_val = calc_CRC_CCITT(segment.buffer)
-    segment.crc = crc_val
+    let crcVal = calcCrcCCITT(segment.buffer)
+    segment.crc = crcVal
 
 
 when isMainModule:
   import strformat
 
-  let firm = load_firmware("firm.txt")
+  let firm = loadFirmware("firm.txt")
   for segment in firm.segments.items():
     echo &"* start address: {segment.startAddress:04x}"
     for idx in 0..segment.buffer.high:

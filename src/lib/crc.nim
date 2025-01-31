@@ -17,24 +17,24 @@ func createCrcTable(poly: uint16): array[0..255, uint16] =
 
 const crcTable = createCrcTable(0x1021)
 
-func calc_CRC_CCITT*(buf: openArray[char|uint8]): uint16 =
+func calcCrcCCITT*(buf: openArray[char|uint8]): uint16 =
   result = uint16(0xffff)
   for i in 0..buf.high:
     result = (result shl 8) xor crcTable[((result shr 8) xor uint8(buf[i])) and 0x00ff]
 
 
 when isMainModule:
-  import strformat
-  import sequtils
+  import std/strformat
+  import std/sequtils
 
   let buf: seq[uint8] = @[0x15'u8]
   let buf2: seq[uint8] = @[0x3b'u8, 0x00'u8]
   var crc: uint16
 
-  crc = calc_CRC_CCITT(buf)
+  crc = calcCrcCCITT(buf)
   echo &"CRC-CCITT: {buf} -> 0x{crc:04x}"
-  crc = calc_CRC_CCITT(buf2)
+  crc = calcCrcCCITT(buf2)
   echo &"CRC-CCITT: {buf2} -> 0x{crc:04x}"
 
   let s = "hogehoge".toSeq
-  echo &"CRC-CCITT: {s} -> 0x{calc_CRC_CCITT(s):04x}"
+  echo &"CRC-CCITT: {s} -> 0x{calcCrcCCITT(s):04x}"

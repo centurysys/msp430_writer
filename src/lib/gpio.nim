@@ -8,13 +8,15 @@ type
   Trigger* {.pure.} = enum
     None = "none"
     Oneshot = "oneshot"
-  Gpio* = ref object
+  GpioObj = object
     name: string
     basedir: string
     fd: File
-  Msp430Reset* = ref object
+  Gpio* = ref GpioObj
+  Msp430ResetObj = object
     test: Gpio
     reset: Gpio
+  Msp430Reset* = ref Msp430ResetObj
 
 # -------------------------------------------------------------------
 #
@@ -27,17 +29,17 @@ proc set(fd: File, val: string) =
 # -------------------------------------------------------------------
 # GPIO (LED)
 # -------------------------------------------------------------------
-proc newGpio(gpio_name: string): Gpio =
-  let basedir = &"/sys/class/leds/{gpio_name}"
-  let node_trigger = &"{basedir}/trigger"
-  let fd_trigger = open(node_trigger, fmReadWrite)
+proc newGpio(gpioName: string): Gpio =
+  let basedir = &"/sys/class/leds/{gpioName}"
+  let nodeTrigger = &"{basedir}/trigger"
+  let fdTrigger = open(nodeTrigger, fmReadWrite)
   defer:
-    fd_trigger.close()
-  fd_trigger.set($Trigger.None)
-  let node_value = &"{basedir}/brightness"
-  let fd = open(node_value, fmReadWrite)
+    fdTrigger.close()
+  fdTrigger.set($Trigger.None)
+  let nodeValue = &"{basedir}/brightness"
+  let fd = open(nodeValue, fmReadWrite)
   result = new Gpio
-  result.name = gpio_name
+  result.name = gpioName
   result.basedir = basedir
   result.fd = fd
 
@@ -59,15 +61,15 @@ proc wait(msec: int) =
 # -------------------------------------------------------------------
 proc newMsp430Reset*(chip: string = ""): Msp430Reset =
   result = new Msp430Reset
-  let pin_reset = if chip.len > 0: &"MSP430_{chip}_RST" else: "MSP430_RST"
-  let pin_test = if chip.len > 0: &"MSP430_{chip}_TEST" else: "MSP430_TEST"
-  result.test = newGpio(pin_test)
-  result.reset = newGpio(pin_reset)
+  let pinReset = if chip.len > 0: &"MSP430_{chip}_RST" else: "MSP430_RST"
+  let pinTest = if chip.len > 0: &"MSP430_{chip}_TEST" else: "MSP430_TEST"
+  result.test = newGpio(pinTest)
+  result.reset = newGpio(pinReset)
 
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc invoke_bsl*(self: Msp430Reset) =
+proc invokeBsl*(self: Msp430Reset) =
   # TEST -> L
   self.test.set(false)
   # RESET -> L
@@ -93,7 +95,7 @@ proc invoke_bsl*(self: Msp430Reset) =
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc reset_mcu*(self: Msp430Reset) =
+proc resetMcu*(self: Msp430Reset) =
   self.test.set(false)
   self.reset.set(true)
   os.sleep(10)
@@ -103,4 +105,4 @@ proc reset_mcu*(self: Msp430Reset) =
 
 when isMainModule:
   let msp430 = newMsp430Reset()
-  msp430.invoke_bsl()
+  msp430.invokeBsl()

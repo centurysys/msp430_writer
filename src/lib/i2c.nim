@@ -50,7 +50,7 @@ proc newI2c*(bus: int, address: uint8, debug: bool = false): I2cdev =
 # -------------------------------------------------------------------
 #
 # -------------------------------------------------------------------
-proc write_read*(self: I2cdev, writebuf: openArray[char|uint8], readlen: int): seq[char] =
+proc writeRead*(self: I2cdev, writebuf: openArray[char|uint8], readlen: int): seq[char] =
   var packets: I2c_rdwr_ioctl_data
   var msgs: array[2, I2c_msg]
   result = newSeq[char](readlen)
@@ -123,7 +123,7 @@ when isMainModule:
     quit("open i2c failed")
   var wbuf: seq[uint8] = @[0'u8]
 
-  var buf = i2c.write_read(wbuf, 0x0d + 1)
+  var buf = i2c.writeRead(wbuf, 0x0d + 1)
   echo &"buf lenght: {buf.len}"
   if buf.len > 0:
     try:
